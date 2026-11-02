@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "UA Projects Monitor"
+description = "A live statistics dashboard for four Ukrainian GTA projects, with centralized polling, durable player history, charts, and rankings."
+version = "1.0.0"
+id = "artifacts/ua-projects-monitor"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24039
+
+[services.development]
+run = "pnpm --filter @workspace/ua-projects-monitor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ua-projects-monitor", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ua-projects-monitor/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24039"
+BASE_PATH = "/"

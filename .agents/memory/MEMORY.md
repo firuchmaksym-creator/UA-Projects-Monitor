@@ -1,0 +1,1 @@
+- [Project online data sources](project-online-data-sources.md) — keep UNKNOWN when official endpoints reject server requests; never substitute estimates or search snapshots.

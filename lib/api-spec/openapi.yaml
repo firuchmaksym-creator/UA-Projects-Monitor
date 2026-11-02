@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API for the UA Projects Monitor dashboard and protected administration.
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: monitor
+    description: Current game project status and player counts
+  - name: statistics
+    description: Historical player measurements and analytics
+  - name: admin
+    description: Protected collector administration
 paths:
   /healthz:
     get:
@@ -24,6 +30,185 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /monitor:
+    get:
+      operationId: getMonitorOverview
+      tags: [monitor]
+      summary: Get current project status and summary
+      responses:
+        "200":
+          description: Current monitor overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorOverview"
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [monitor]
+      summary: Get ranked projects with known online counts
+      responses:
+        "200":
+          description: Online project ranking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leaderboard"
+  /statistics:
+    get:
+      operationId: getStatistics
+      tags: [statistics]
+      summary: Get player-count time series and aggregates
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d, all]
+            default: 24h
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [verba-online, ua-online, ukraine-gta, trident-mobile]
+      responses:
+        "200":
+          description: Time series for the selected range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatisticsResponse"
+        "400":
+          description: Invalid query parameters
+  /history:
+    get:
+      operationId: getMeasurementHistory
+      tags: [statistics]
+      summary: Get individual successful measurements
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [verba-online, ua-online, ukraine-gta, trident-mobile]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Paginated measurement history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+        "400":
+          description: Invalid query parameters
+  /admin/status:
+    get:
+      operationId: getAdminStatus
+      tags: [admin]
+      summary: Get collector health and configuration
+      responses:
+        "200":
+          description: Collector administration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStatus"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+  /admin/collect:
+    post:
+      operationId: runManualCollection
+      tags: [admin]
+      summary: Run a centralized manual collection cycle
+      responses:
+        "200":
+          description: Collection cycle result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionResult"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "409":
+          description: A collection cycle is already running
+  /admin/settings:
+    patch:
+      operationId: updateMonitorSettings
+      tags: [admin]
+      summary: Update the collector interval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorSettings"
+        "400":
+          description: Invalid settings
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+  /admin/projects/{projectId}:
+    patch:
+      operationId: updateProjectConfig
+      tags: [admin]
+      summary: Update a project's source endpoint or enabled state
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [verba-online, ua-online, ukraine-gta, trident-mobile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectConfigUpdate"
+      responses:
+        "200":
+          description: Updated project provider configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectConfig"
+        "400":
+          description: Invalid configuration
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "404":
+          description: Project not found
 components:
   schemas:
     HealthStatus:
@@ -31,6 +216,286 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    ProjectId:
+      type: string
+      enum: [verba-online, ua-online, ukraine-gta, trident-mobile]
+    ProjectStatus:
+      type: string
+      enum: [ONLINE, OFFLINE, UNKNOWN]
+    Range:
+      type: string
+      enum: [1h, 24h, 7d, 30d, all]
+    ProjectSummary:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ProjectId"
+        project:
+          type: string
+        online:
+          type: [integer, "null"]
+        status:
+          $ref: "#/components/schemas/ProjectStatus"
+        checkedAt:
+          type: [string, "null"]
+          format: date-time
+        lastSuccessAt:
+          type: [string, "null"]
+          format: date-time
+        source:
+          type: [string, "null"]
+        error:
+          type: [string, "null"]
+        historicalMax:
+          type: [integer, "null"]
+        averageOnline:
+          type: [number, "null"]
+        peak24h:
+          type: [integer, "null"]
+        peak7d:
+          type: [integer, "null"]
+      required: [id, project, online, status, checkedAt, lastSuccessAt, source, error, historicalMax, averageOnline, peak24h, peak7d]
+    MonitorSummary:
+      type: object
+      properties:
+        knownOnlineTotal:
+          type: integer
+        changeSincePrevious:
+          type: [integer, "null"]
+        availableProjects:
+          type: integer
+        totalProjects:
+          type: integer
+        knownProjects:
+          type: integer
+        totalIsPartial:
+          type: boolean
+        leaderProjectId:
+          type: [string, "null"]
+          enum: [verba-online, ua-online, ukraine-gta, trident-mobile, null]
+        leaderProject:
+          type: [string, "null"]
+        lastUpdatedAt:
+          type: [string, "null"]
+          format: date-time
+      required: [knownOnlineTotal, changeSincePrevious, availableProjects, totalProjects, knownProjects, totalIsPartial, leaderProjectId, leaderProject, lastUpdatedAt]
+    MonitorOverview:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/MonitorSummary"
+        refreshIntervalSeconds:
+          type: integer
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectSummary"
+      required: [summary, refreshIntervalSeconds, projects]
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        id:
+          $ref: "#/components/schemas/ProjectId"
+        project:
+          type: string
+        online:
+          type: integer
+        checkedAt:
+          type: string
+          format: date-time
+      required: [rank, id, project, online, checkedAt]
+    Leaderboard:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        unknownProjects:
+          type: integer
+        updatedAt:
+          type: [string, "null"]
+          format: date-time
+      required: [entries, unknownProjects, updatedAt]
+    Measurement:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          $ref: "#/components/schemas/ProjectId"
+        online:
+          type: integer
+        source:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProjectStatus"
+        measuredAt:
+          type: string
+          format: date-time
+      required: [id, projectId, online, source, status, measuredAt]
+    StatisticsSeries:
+      type: object
+      properties:
+        projectId:
+          $ref: "#/components/schemas/ProjectId"
+        project:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProjectStatus"
+        source:
+          type: [string, "null"]
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/Measurement"
+        highestOnline:
+          type: [integer, "null"]
+        lowestOnline:
+          type: [integer, "null"]
+        averageOnline:
+          type: [number, "null"]
+      required: [projectId, project, status, source, points, highestOnline, lowestOnline, averageOnline]
+    StatisticsResponse:
+      type: object
+      properties:
+        range:
+          $ref: "#/components/schemas/Range"
+        from:
+          type: [string, "null"]
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatisticsSeries"
+      required: [range, from, to, series]
+    HistoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Measurement"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [items, total, limit, offset]
+    ProjectConfig:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ProjectId"
+        project:
+          type: string
+        sourceUrl:
+          type: [string, "null"]
+          format: uri
+        enabled:
+          type: boolean
+        parser:
+          type: string
+        lastCheckedAt:
+          type: [string, "null"]
+          format: date-time
+        lastSuccessAt:
+          type: [string, "null"]
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ProjectStatus"
+        online:
+          type: [integer, "null"]
+        consecutiveFailures:
+          type: integer
+        lastLatencyMs:
+          type: [integer, "null"]
+        error:
+          type: [string, "null"]
+      required: [id, project, sourceUrl, enabled, parser, lastCheckedAt, lastSuccessAt, status, online, consecutiveFailures, lastLatencyMs, error]
+    RecentCheck:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          $ref: "#/components/schemas/ProjectId"
+        checkedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+        success:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ProjectStatus"
+        online:
+          type: [integer, "null"]
+        source:
+          type: [string, "null"]
+        error:
+          type: [string, "null"]
+      required: [id, projectId, checkedAt, durationMs, success, status, online, source, error]
+    AdminStatus:
+      type: object
+      properties:
+        database:
+          type: string
+          enum: [healthy, unavailable]
+        refreshIntervalSeconds:
+          type: integer
+        collectorRunning:
+          type: boolean
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectConfig"
+        recentChecks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentCheck"
+      required: [database, refreshIntervalSeconds, collectorRunning, projects, recentChecks]
+    CollectionResult:
+      type: object
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentCheck"
+      required: [startedAt, completedAt, results]
+    MonitorSettings:
+      type: object
+      properties:
+        refreshIntervalSeconds:
+          type: integer
+      required: [refreshIntervalSeconds]
+    MonitorSettingsUpdate:
+      type: object
+      properties:
+        refreshIntervalSeconds:
+          type: integer
+          minimum: 30
+          maximum: 600
+      required: [refreshIntervalSeconds]
+    ProjectConfigUpdate:
+      type: object
+      properties:
+        sourceUrl:
+          type: [string, "null"]
+          format: uri
+        enabled:
+          type: boolean
+      additionalProperties: false
