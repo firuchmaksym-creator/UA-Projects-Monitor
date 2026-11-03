@@ -1,1 +1,2 @@
 - [Project online data sources](project-online-data-sources.md) — keep UNKNOWN when official endpoints reject server requests; never substitute estimates or search snapshots.
+- [Brand and language](brand-and-language.md) — use Monitoring by Firych; keep the interface Ukrainian while preserving official project names.

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">Monitoring by Firych</title>
   <rect width="128" height="128" rx="28" fill="#171827"/>
-  <path d="M30 34h17v31c0 10 5 15 14 15s14-5 14-15V34h17v32c0 20-12 32-31 32S30 86 30 66V34Z" fill="#aa8cff"/>
-  <path d="M93 84h6v6h-6zM103 74h6v6h-6zM83 74h6v6h-6z" fill="#5cc9de"/>
-  <path d="M22 106h84" stroke="#5cc9de" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>
+  <path d="M23 94V34h17l24 30 24-30h17v60H88V60L64 88 40 60v34H23Z" fill="#AA8CFF"/>
+  <path d="M91 98h9V80l10 12 10-12v18h9V65h-8l-11 14-11-14h-8v33Z" fill="#5CC9DE"/>
 </svg>
